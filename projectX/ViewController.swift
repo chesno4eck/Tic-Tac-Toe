@@ -9,27 +9,19 @@
 import UIKit
 import Firebase
 
-class ViewController: UIViewController {
+class ViewController: UIViewController, UITextFieldDelegate {
 
     @IBOutlet weak var chatTextView: UITextView!
     @IBOutlet weak var inputTextField: UITextField!
     
-    var ref = FIRDatabaseReference()
     
     @IBOutlet weak var nameTextField: UITextField!
     
     override func viewDidLoad() {
         super.viewDidLoad()
         
-        let email = "che_d@mail.ru"
-        let password = "Asasas"
-        
-        FIRAuth.auth()?.signIn(withEmail: email, password: password) { (user, error) in
-            print(error ?? "auth success")
-        }
-        
-        ref = FIRDatabase.database().reference()
-        let messages = ref.child("messages")
+        DataBaseRefs.ref = FIRDatabase.database().reference()
+        let messages = DataBaseRefs.ref.child("messages")
 
         messages.observe(FIRDataEventType.value, with: { (snapshot) in
             if let postDict = snapshot.value as? [String : [String: AnyObject]]{
@@ -47,27 +39,42 @@ class ViewController: UIViewController {
         })
     }
     
-    func sendMessage(_ text: String) {
-        
-        let key = ref.child("posts").childByAutoId().key
-        let post = ["timestamp": Date().timeIntervalSince1970,
-                    "name": nameTextField.text ?? "",
-                    "text": text] as [String : Any]
-        
-        self.ref.child("messages").updateChildValues([key: post])
-    }
     
     @IBAction func button(_ sender: AnyObject) {
-        sendMessage(inputTextField.text!)
-        inputTextField.text = ""
+        MessageSender.sendMessage(inputTextField.text!, name: nameTextField.text)
         
     }
     
     @IBAction func clearButton(_ sender: AnyObject) {
-        self.ref.child("messages").removeValue { (Error, FIRDatabaseReference) in
+        DataBaseRefs.ref.child("messages").removeValue { (Error, FIRDatabaseReference) in
             self.chatTextView.text = ""
         }
+    }
+    
+    //MARK: - UITextFieldDelegate
+    func textFieldShouldReturn(_ textField: UITextField) -> Bool {
+        MessageSender.sendMessage(inputTextField.text!, name: nameTextField.text)
+        return true
     }
 
 }
 
+@IBDesignable
+class MyCustomView: UIView {
+    @IBInspectable var cornerRadius: CGFloat = 0 {
+        didSet {
+            layer.cornerRadius = cornerRadius
+            layer.masksToBounds = cornerRadius > 0
+        }
+    }
+    @IBInspectable var borderWidth: CGFloat = 0 {
+        didSet {
+            layer.borderWidth = borderWidth
+        }
+    }
+    @IBInspectable var borderColor: UIColor? {
+        didSet {
+            layer.borderColor = borderColor?.cgColor
+        }
+    }
+}
